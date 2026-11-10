@@ -1,0 +1,128 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
+
+  /* A calm, slightly green-grey paper with a pine accent and a warm saffron for "reserved". */
+  --color-paper: #f4f6f3;
+  --color-surface: #ffffff;
+  --color-ink: #15241f;
+  --color-muted: #566660;
+  --color-line: #d8e0db;
+
+  --color-pine-50: #e8f3ef;
+  --color-pine-100: #cfe6de;
+  --color-pine-600: #0f6b58;
+  --color-pine-700: #0b5646;
+  --color-pine-800: #084437;
+
+  --color-saffron-50: #fdf4df;
+  --color-saffron-100: #f9e3b0;
+  --color-saffron-500: #e0a028;
+  --color-saffron-700: #7d5206;
+
+  --color-pomegranate-50: #fbebed;
+  --color-pomegranate-600: #a8323e;
+  --color-pomegranate-700: #8a2832;
+}
+
+html {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100dvh;
+  font-family: var(--font-sans);
+  line-height: 1.55;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-pine-600);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+::selection {
+  background: var(--color-pine-100);
+}
+
+/* ---- The queue ticket: the one signature element of the interface ---- */
+.ticket {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(6.5rem, 9rem) 1fr;
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 1.25rem;
+}
+.ticket-stub {
+  position: relative;
+  border-right: 2px dashed var(--color-line);
+  background: var(--color-pine-50);
+  border-radius: 1.25rem 0 0 1.25rem;
+}
+.ticket-stub::before,
+.ticket-stub::after {
+  content: "";
+  position: absolute;
+  right: -11px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-paper);
+  border: 1px solid var(--color-line);
+}
+.ticket-stub::before {
+  top: -11px;
+  clip-path: inset(50% 0 0 0);
+}
+.ticket-stub::after {
+  bottom: -11px;
+  clip-path: inset(0 0 50% 0);
+}
+.ticket-muted .ticket-stub {
+  background: #eef1ef;
+}
+
+/* Tables on narrow screens scroll sideways instead of squashing. */
+.table-wrap {
+  overflow-x: auto;
+}
+
+dialog {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  max-width: 100vw;
+}
+dialog::backdrop {
+  background: rgb(21 36 31 / 0.55);
+}
+dialog[open] {
+  animation: pop 160ms ease-out;
+}
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
