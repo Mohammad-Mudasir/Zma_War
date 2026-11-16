@@ -1,0 +1,98 @@
+# Settings shared by every service that talks to the database or builds slots.
+x-common-env: &common_env
+  NODE_ENV: production
+  DATABASE_URL: mysql://zma_user:${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in your .env file}@db:3306/zma_war
+  APP_URL: ${APP_URL:-http://localhost:3000}
+  APP_TIMEZONE: ${APP_TIMEZONE:-Asia/Kabul}
+  HOSPITAL_NAME: ${HOSPITAL_NAME:-Safa Community Hospital}
+  SLOT_MINUTES: ${SLOT_MINUTES:-30}
+  SLOT_OPEN: ${SLOT_OPEN:-09:00}
+  SLOT_CLOSE: ${SLOT_CLOSE:-15:00}
+  SLOT_WORKING_DAYS: ${SLOT_WORKING_DAYS:-1,2,3,4,5}
+  SMTP_HOST: ${SMTP_HOST:-}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  SMTP_SECURE: ${SMTP_SECURE:-false}
+  SMTP_USER: ${SMTP_USER:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  EMAIL_FROM: ${EMAIL_FROM:-Zma Wār <no-reply@example.com>}
+
+services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: zma_war
+      MYSQL_USER: zma_user
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in your .env file}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in your .env file}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      # CMD-SHELL so the password variable is expanded; 127.0.0.1 forces TCP, which
+      # only works once MySQL's real server (not its temporary init server) is up.
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  # One-off job: apply migrations, then create the administrator and appointment slots.
+  migrate:
+    build:
+      context: .
+      target: tools
+    image: zma-war-tools
+    command:
+      - sh
+      - -c
+      - node_modules/.bin/prisma migrate deploy && node_modules/.bin/tsx prisma/seed.ts
+    environment:
+      <<: *common_env
+      ADMIN_NAME: ${ADMIN_NAME:-Administrator}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?Set ADMIN_EMAIL in your .env file}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in your .env file}
+      SEED_DEMO: ${SEED_DEMO:-false}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  web:
+    build:
+      context: .
+      target: runner
+    image: zma-war-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      <<: *common_env
+      AUTH_SECRET: ${AUTH_SECRET:?Set AUTH_SECRET in your .env file}
+      # Leave unset when serving over HTTPS. Set to false only to test over plain HTTP.
+      COOKIE_SECURE: ${COOKIE_SECURE:-}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # Sends the reminder emails.
+  reminders:
+    build:
+      context: .
+      target: tools
+    image: zma-war-tools
+    command: ["node_modules/.bin/tsx", "src/jobs/send-reminders.ts"]
+    restart: unless-stopped
+    environment:
+      <<: *common_env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  mysql_data:

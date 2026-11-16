@@ -20,7 +20,7 @@ function secretKey(): Uint8Array {
   return new TextEncoder().encode(secret);
 }
 
-function useSecureCookie(): boolean {
+function shouldUseSecureCookie(): boolean {
   if (process.env.COOKIE_SECURE) return process.env.COOKIE_SECURE === "true";
   return process.env.NODE_ENV === "production";
 }
@@ -38,7 +38,7 @@ export async function createSession(input: { id: number; role: Role; name: strin
   (await cookies()).set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: useSecureCookie(),
+    secure: shouldUseSecureCookie(),
     path: "/",
     maxAge,
   });
