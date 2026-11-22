@@ -1,0 +1,34 @@
+# Backup trigger for the reminder job. GitHub's scheduler is best-effort and can run
+# late (sometimes by an hour or more), so the main trigger is cron-job.org calling
+# /api/jobs/reminders. This workflow is a safety net and lets you run the job by hand.
+name: Send reminders
+
+on:
+  schedule:
+    - cron: "11,26,41,56 * * * *" # every 15 minutes, away from the busy top of the hour
+  workflow_dispatch:
+
+concurrency:
+  group: reminders
+  cancel-in-progress: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm run job:reminders -- --once
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          APP_URL: ${{ secrets.APP_URL }}
+          APP_TIMEZONE: ${{ secrets.APP_TIMEZONE || 'Asia/Kabul' }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          NODE_ENV: production
