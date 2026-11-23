@@ -81,6 +81,6 @@ export async function resendVerificationAction(): Promise<FormState> {
   }
   const sent = await sendVerificationEmail(user);
   return sent
-    ? { status: "success", message: `We sent a new link to ${user.email}.` }
+    ? { status: "success", message: `We sent a new link to ${user.email}. Also check your spam!` }
     : { status: "error", message: "We couldn't send the email right now. Please try again later." };
 }
